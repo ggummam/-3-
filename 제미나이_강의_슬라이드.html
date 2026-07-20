@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>프롬프트 엔지니어링과 제미나이 Gem 활용 — 강의 슬라이드</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root{
+    --teal:#0f766e; --teal-dark:#115e59; --teal-light:#ccfbf1;
+    --cream:#fdf6ec; --cream-dark:#f5e9d7;
+    --ink:#1f2937; --ink-soft:#4b5563;
+    --accent:#d97706; --accent-soft:#fef3c7;
+    --bad:#b91c1c; --bad-bg:#fee2e2;
+    --good:#15803d; --good-bg:#dcfce7;
+  }
+  html,body{ height:100%; overflow:hidden; }
+  body{
+    font-family:"Pretendard","Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+    background:#e7e0d3; color:var(--ink);
+  }
+  .slide{
+    display:none; width:100vw; height:100vh;
+    padding:5vh 6vw; flex-direction:column; justify-content:center;
+    background:var(--cream); position:relative; overflow:hidden;
+  }
+  .slide.active{ display:flex; }
+  .slide::before{
+    content:""; position:absolute; top:0; left:0; right:0; height:10px;
+    background:linear-gradient(90deg,var(--teal),var(--teal-dark));
+  }
+  .tag{
+    display:inline-block; align-self:flex-start; background:var(--teal); color:#fff;
+    font-size:0.85rem; font-weight:700; padding:6px 16px; border-radius:999px;
+    margin-bottom:18px; letter-spacing:0.05em;
+  }
+  h1{ font-size:3.2rem; line-height:1.25; color:var(--teal-dark); font-weight:800; }
+  h2{ font-size:2.2rem; line-height:1.3; color:var(--teal-dark); font-weight:800; margin-bottom:26px; }
+  h3{ font-size:1.25rem; color:var(--teal); margin-bottom:10px; }
+  p,li{ font-size:1.25rem; line-height:1.65; color:var(--ink-soft); }
+  .sub{ font-size:1.5rem; color:var(--ink-soft); margin-top:18px; font-weight:500; }
+  ul.clean{ list-style:none; }
+  ul.clean li{ padding:10px 0 10px 38px; position:relative; }
+  ul.clean li::before{
+    content:"✓"; position:absolute; left:4px; top:10px;
+    color:var(--teal); font-weight:800; font-size:1.2rem;
+  }
+  ol.num{ list-style:none; counter-reset:n; }
+  ol.num li{ counter-increment:n; padding:10px 0 10px 52px; position:relative; }
+  ol.num li::before{
+    content:counter(n); position:absolute; left:0; top:8px;
+    width:36px; height:36px; border-radius:50%;
+    background:var(--teal); color:#fff; font-weight:800;
+    display:flex; align-items:center; justify-content:center; font-size:1.05rem;
+  }
+  table{ border-collapse:collapse; width:100%; background:#fff; border-radius:12px; overflow:hidden;
+         box-shadow:0 2px 10px rgba(0,0,0,0.07); }
+  th{ background:var(--teal); color:#fff; padding:12px 16px; text-align:left; font-size:1.05rem; }
+  td{ padding:11px 16px; border-bottom:1px solid #eee7d8; font-size:1.05rem; color:var(--ink-soft); }
+  tr:last-child td{ border-bottom:none; }
+  td.hl{ color:var(--teal-dark); font-weight:700; white-space:nowrap; }
+  .cols{ display:flex; gap:28px; align-items:stretch; }
+  .cols>div{ flex:1; }
+  .card{
+    background:#fff; border-radius:16px; padding:24px 28px;
+    box-shadow:0 2px 12px rgba(0,0,0,0.07);
+  }
+  .card.bad{ border-top:6px solid var(--bad); }
+  .card.good{ border-top:6px solid var(--good); }
+  .card .label{ font-weight:800; font-size:1.1rem; margin-bottom:12px; }
+  .card.bad .label{ color:var(--bad); }
+  .card.good .label{ color:var(--good); }
+  pre{
+    background:#0b3b38; color:#e6fffa; padding:20px 24px; border-radius:12px;
+    font-size:1.02rem; line-height:1.6; white-space:pre-wrap; word-break:keep-all;
+    font-family:"Pretendard","Noto Sans KR","Malgun Gothic",monospace,sans-serif;
+  }
+  .quote{
+    background:var(--accent-soft); border-left:8px solid var(--accent);
+    padding:22px 30px; border-radius:0 14px 14px 0;
+    font-size:1.45rem; font-weight:700; color:#92400e; line-height:1.55;
+  }
+  .flow{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .flow .step{
+    background:#fff; border:2px solid var(--teal); color:var(--teal-dark);
+    font-weight:700; padding:12px 18px; border-radius:12px; font-size:1.05rem;
+    box-shadow:0 2px 8px rgba(0,0,0,0.06);
+  }
+  .flow .arrow{ color:var(--teal); font-size:1.4rem; font-weight:800; }
+  .badge-row{ display:flex; gap:16px; flex-wrap:wrap; margin-top:8px; }
+  .badge{
+    background:var(--teal-light); color:var(--teal-dark); font-weight:800;
+    padding:14px 22px; border-radius:14px; font-size:1.25rem;
+  }
+  .note{
+    margin-top:22px; background:var(--cream-dark); border-radius:12px;
+    padding:14px 20px; font-size:1.05rem; color:var(--ink-soft);
+  }
+  .note b{ color:var(--accent); }
+  .foot{
+    position:absolute; bottom:22px; right:34px; font-size:0.95rem; color:#a8a29e;
+  }
+  .section-label{
+    position:absolute; bottom:22px; left:34px; font-size:0.95rem; color:#a8a29e; font-weight:600;
+  }
+  /* 표지 */
+  .cover{ background:linear-gradient(135deg,#0f766e 0%,#115e59 60%,#134e4a 100%); color:#fff; align-items:flex-start; }
+  .cover::before{ display:none; }
+  .cover h1{ color:#fff; font-size:3.6rem; margin:18px 0 10px; }
+  .cover .sub{ color:#99f6e4; font-size:1.6rem; }
+  .cover .tag{ background:#facc15; color:#78350f; }
+  .cover .meta{ margin-top:48px; color:#5eead4; font-size:1.15rem; line-height:1.9; }
+  .divider{ background:var(--teal-dark); color:#fff; align-items:flex-start; }
+  .divider::before{ background:#facc15; }
+  .divider h1{ color:#fff; font-size:3rem; }
+  .divider .sub{ color:#99f6e4; }
+  .divider .tag{ background:#facc15; color:#78350f; }
+  /* 내비게이션 */
+  .nav{
+    position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
+    display:flex; gap:10px; z-index:10; align-items:center;
+  }
+  .nav button{
+    background:var(--teal); color:#fff; border:none; border-radius:10px;
+    padding:9px 20px; font-size:1rem; font-weight:700; cursor:pointer;
+    font-family:inherit;
+  }
+  .nav button:hover{ background:var(--teal-dark); }
+  .nav .counter{
+    background:rgba(0,0,0,0.55); color:#fff; border-radius:10px;
+    padding:9px 16px; font-size:0.95rem; font-weight:600;
+  }
+  .progress{
+    position:fixed; top:0; left:0; height:10px; background:#facc15;
+    z-index:20; transition:width .25s;
+  }
+  small.helper{ display:block; margin-top:8px; color:#9ca3af; font-size:0.9rem; }
+  .two-pre{ display:flex; gap:22px; }
+  .two-pre>div{ flex:1; display:flex; flex-direction:column; }
+  .two-pre pre{ flex:1; }
+  .cmd{
+    display:inline-block; background:var(--teal-dark); color:#facc15;
+    font-weight:800; padding:6px 16px; border-radius:8px; font-size:1.1rem; margin-right:8px;
+  }
+  /* ===== 바로가기 버튼 ===== */
+  a.golink{
+    display:inline-block; background:var(--accent); color:#fff; text-decoration:none;
+    padding:12px 26px; border-radius:10px; font-weight:800; font-size:1.1rem;
+    transition:.15s; box-shadow:0 2px 8px rgba(0,0,0,0.12);
+  }
+  a.golink:hover{ background:#b45309; }
+  a.golink.alt{ background:var(--teal); }
+  a.golink.alt:hover{ background:var(--teal-dark); }
+  /* ===== 스크롤형 슬라이드 (지침 생성기·긴 프롬프트) ===== */
+  .slide.scroll{ justify-content:flex-start; overflow-y:auto; padding-top:5vh; padding-bottom:14vh; }
+  .slide.scroll h2{ margin-top:6px; }
+  /* ===== 복사 버튼 & 프롬프트 박스 ===== */
+  button.copy{
+    background:var(--teal); color:#fff; border:none; padding:10px 20px;
+    border-radius:9px; font-size:1rem; font-weight:700; cursor:pointer;
+    font-family:inherit; transition:.15s;
+  }
+  button.copy:hover{ background:var(--teal-dark); }
+  button.copy.copied{ background:var(--accent); }
+  .prompt-box{ margin:14px 0 6px; }
+  .prompt-box pre{ max-height:52vh; overflow-y:auto; }
+  .p-foot{ margin-top:12px; }
+  /* ===== 지침 생성기 ===== */
+  .gen{
+    border:2px dashed var(--accent); border-radius:16px;
+    background:var(--accent-soft); padding:22px 26px; margin:10px 0;
+  }
+  .gen .gen-title{ font-weight:800; color:#8a6d15; font-size:1.35rem; margin-bottom:4px; }
+  .gen .gen-sub{ font-size:1rem; color:#96772a; margin-bottom:8px; }
+  .gen .gen-sec{
+    font-size:1.02rem; font-weight:800; color:#8a6d15; margin:20px 0 4px;
+    padding-bottom:6px; border-bottom:1px dashed #e0cf9d;
+  }
+  .gen .gen-sec .em{ font-size:0.85rem; font-weight:600; color:#a8862f; margin-left:8px; }
+  .field{ margin:10px 0; }
+  .field label{ display:block; font-size:0.95rem; font-weight:700; color:#6b5514; margin-bottom:4px; }
+  .field input,.field select,.field textarea{
+    width:100%; padding:10px 12px; border:1px solid #e0cf9d; border-radius:8px;
+    font-family:inherit; font-size:1rem; background:#fff; color:var(--ink);
+  }
+  .field textarea{ min-height:64px; resize:vertical; }
+  .gen-row{ display:flex; gap:14px; flex-wrap:wrap; }
+  .gen-row .field{ flex:1; min-width:180px; }
+  button.gen-btn{
+    background:var(--accent); color:#fff; border:none;
+    padding:13px 26px; border-radius:10px; font-size:1.1rem; font-weight:800;
+    cursor:pointer; margin-top:14px; font-family:inherit; transition:.15s;
+  }
+  button.gen-btn:hover{ background:#b45309; }
+  .gen-out-wrap{ margin-top:16px; display:none; }
+  .gen-out-wrap.show{ display:block; }
+  textarea.gen-out{
+    width:100%; min-height:260px; max-height:46vh; padding:16px; border:2px solid var(--teal);
+    border-radius:12px; font-family:inherit; font-size:0.95rem; background:#fff;
+    line-height:1.6; color:#2b3a38;
+  }
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+
+<!-- 1. 표지 -->
+<section class="slide cover active">
+  <span class="tag">용인AI연구회 제미나이 활용교실 · 100분</span>
+  <h1>프롬프트 엔지니어링과<br>제미나이 Gem 활용</h1>
+  <p class="sub">내 분야 맞춤 브리핑부터 포스터·카드뉴스까지, 나만의 AI 작업 공간 만들기</p>
+  <div class="meta">
+    대상 : 중소기업 대표 · 취업준비생 · 부동산업자 · 직장인 · AI 강사<br>
+    준비물 : 구글 계정(제미나이 로그인) · 내 분야 기사 1개(링크 또는 본문)
+  </div>
+  <div class="foot">← → 방향키로 이동</div>
+</section>
+
+<!-- 2. 오늘의 목표 -->
+<section class="slide">
+  <span class="tag">강의 목표</span>
+  <h2>오늘 이 시간이 끝나면, 여러분은</h2>
+  <ol class="num">
+    <li>좋은 프롬프트와 부족한 프롬프트의 <b>차이를 설명</b>할 수 있습니다.</li>
+    <li>내가 원하는 결과물의 <b>기준을 프롬프트에 담을</b> 수 있습니다.</li>
+    <li>지침 생성기를 활용해 <b>내 분야 맞춤 브리핑 Gem</b>을 만들 수 있습니다.</li>
+    <li>AI 브리핑의 <b>출처와 사실을 검증하는 눈</b>을 갖습니다.</li>
+    <li><b>지침을 추가하며 Gem을 키워</b> 포스터·카드뉴스까지 확장하고, 회의록·보고서 같은 <b>반복 업무에도 활용</b>할 수 있습니다.</li>
+  </ol>
+  <div class="note">💡 오늘의 결과물 : <b>브리핑부터 카드뉴스까지 한 번에 되는 나만의 Gem 1개</b><br>
+  1차 브리핑 → 2차 명령어 추가 → 3차 이미지 기능 추가, <b>3단계로 키워 갑니다</b>.</div>
+  <div class="section-label">강의 목표</div>
+</section>
+
+<!-- 3. 진행 순서 -->
+<section class="slide">
+  <span class="tag">진행 순서</span>
+  <h2>100분, 이렇게 진행합니다</h2>
+  <table>
+    <tr><th style="width:130px">시간</th><th>강의 및 실습</th></tr>
+    <tr><td class="hl">0~10분</td><td>좋은 프롬프트와 부족한 프롬프트 비교</td></tr>
+    <tr><td class="hl">10~20분</td><td>강사 전체 시연 : 지침 생성기 질문 → 지침 완성 → Gem 저장 → 첫 브리핑</td></tr>
+    <tr><td class="hl">20~38분</td><td>실습 ① 실습 기사 준비 + 지침 생성기 질문에 답하기</td></tr>
+    <tr><td class="hl">38~48분</td><td>실습 ② 개인별 브리핑 Gem 만들기·저장하기</td></tr>
+    <tr><td class="hl">48~60분</td><td>실습 ③ 내 분야 브리핑 받아보기</td></tr>
+    <tr><td class="hl">60~68분</td><td>브리핑 검증(출처·사실 확인) → 2차 지침 추가(심층·공유멘트)</td></tr>
+    <tr><td class="hl">68~84분</td><td>시연 + 실습 ④ 3차 지침 추가 — 이미지 제작 기능 붙이기</td></tr>
+    <tr><td class="hl">84~94분</td><td>포스터 1장 + 카드뉴스 구성안·1페이지 제작</td></tr>
+    <tr><td class="hl">94~100분</td><td>회의록·보고서 Gem 미니 시연 · 저장 확인 · 마무리</td></tr>
+  </table>
+  <div class="section-label">진행 순서</div>
+</section>
+
+<!-- 4. 도입 질문 -->
+<section class="slide divider">
+  <span class="tag">도입 · 0~10분</span>
+  <h1>AI는 왜 내 마음처럼<br>답하지 않을까?</h1>
+  <p class="sub" style="margin-top:36px">
+    "제미나이가 마음에 들지 않는 답을 했을 때,<br>
+    <b style="color:#facc15">AI의 문제</b>일까요? <b style="color:#facc15">질문의 문제</b>일까요?"
+  </p>
+</section>
+
+<!-- 5. 나쁜 vs 좋은 프롬프트 -->
+<section class="slide">
+  <span class="tag">도입 · 비교 체험</span>
+  <h2>같은 요청, 다른 결과</h2>
+  <div class="two-pre">
+    <div>
+      <div class="card bad" style="margin-bottom:14px"><div class="label">😕 부족한 프롬프트</div></div>
+      <pre>이 기사 요약해줘.</pre>
+    </div>
+    <div>
+      <div class="card good" style="margin-bottom:14px"><div class="label">😊 좋은 프롬프트</div></div>
+      <pre>너는 중소기업 대표를 위한 경제 브리핑 비서야.
+아래 기사를 요약해줘.
+
+- 핵심 내용을 3가지로 정리해줘.
+- 직원 20명 제조업 회사에 미칠
+  기회와 리스크를 한 가지씩 짚어줘.
+- 내일 실무 팀장에게 확인을 지시할
+  사항 1가지를 제안해줘.
+- 기사에 없는 내용은 만들지 말고,
+  출처와 날짜를 함께 표시해줘.</pre>
+    </div>
+  </div>
+  <div class="note">두 프롬프트를 직접 입력해 보고, 결과가 어떻게 달라지는지 비교해 봅시다.</div>
+  <div class="section-label">도입</div>
+</section>
+
+<!-- 6. 핵심 메시지 -->
+<section class="slide">
+  <span class="tag">도입 · 핵심 메시지</span>
+  <h2>좋은 프롬프트란?</h2>
+  <div class="quote">
+    좋은 프롬프트는 길기만 한 명령이 아니라,<br>
+    내가 원하는 <u>결과의 기준</u>을 AI가 이해할 수 있게 설명한 문장입니다.
+  </div>
+  <ul class="clean" style="margin-top:30px">
+    <li>누구를 위한 글인지 · 어떤 목적으로 쓰는지</li>
+    <li>어떤 내용이 들어가는지 · 어떤 형식으로 쓰는지</li>
+    <li>문체와 난이도 · 분량이 정해져 있는지</li>
+  </ul>
+  <div class="section-label">도입</div>
+</section>
+
+<!-- 7. 6가지 요소 -->
+<section class="slide">
+  <span class="tag">개념</span>
+  <h2>좋은 프롬프트의 6가지 요소</h2>
+  <table>
+    <tr><th style="width:110px">요소</th><th>의미</th><th>예시</th></tr>
+    <tr><td class="hl">역할</td><td>AI가 어떤 관점에서 일할지</td><td>"너는 생활정보 전문 블로거야."</td></tr>
+    <tr><td class="hl">목적</td><td>결과물을 어디에 사용할지</td><td>"지역 주민 대상 홍보에 사용할 거야."</td></tr>
+    <tr><td class="hl">대상</td><td>누가 읽거나 사용할지</td><td>"AI를 처음 접하는 50~60대"</td></tr>
+    <tr><td class="hl">자료</td><td>무엇을 바탕으로 만들지</td><td>"아래 강의계획서를 바탕으로"</td></tr>
+    <tr><td class="hl">조건</td><td>반드시 지켜야 할 기준</td><td>"없는 정보는 만들지 말 것"</td></tr>
+    <tr><td class="hl">형식</td><td>결과를 어떻게 보여줄지</td><td>"제목, 도입, 본문, 마무리 순서"</td></tr>
+  </table>
+  <div class="quote" style="margin-top:24px; font-size:1.3rem; text-align:center">
+    역할 + 목적 + 대상 + 자료 + 조건 + 출력 형식
+  </div>
+  <div class="section-label">개념 · 프롬프트 6요소</div>
+</section>
+
+<!-- 8. 회의록 예시 -->
+<section class="slide">
+  <span class="tag">개념 · 예시</span>
+  <h2>6요소를 적용하면 — 회의록 정리</h2>
+  <div class="two-pre">
+    <div>
+      <div class="card bad" style="margin-bottom:14px"><div class="label">😕 나쁜 예</div></div>
+      <pre>회의록을 정리해줘.</pre>
+    </div>
+    <div>
+      <div class="card good" style="margin-bottom:14px"><div class="label">😊 좋은 예</div></div>
+      <pre>너는 행정 업무 담당자야.
+아래 회의 내용을 간결한 회의록으로 정리해줘.
+
+다음 순서로 작성해줘.
+1. 회의명  2. 일시 및 참석자
+3. 주요 논의 내용  4. 결정 사항
+5. 담당자별 후속 업무
+6. 다음 회의에서 확인할 사항
+
+회의 내용에 없는 결정이나 담당자는
+임의로 만들지 말고 '확인 필요'라고 표시해줘.</pre>
+    </div>
+  </div>
+  <div class="section-label">개념 · 프롬프트 6요소</div>
+</section>
+
+<!-- 9. 일반 대화 vs Gem -->
+<section class="slide">
+  <span class="tag">개념 · Gem</span>
+  <h2>일반 대화 vs 맞춤형 Gem</h2>
+  <p style="margin-bottom:20px">제미나이의 <b>Gem</b>은 반복해서 사용할 <b>기준·자료·작업 방식</b>을 미리 정해 놓는 나만의 작업 공간입니다.</p>
+  <table>
+    <tr><th>일반 대화</th><th>맞춤형 Gem</th></tr>
+    <tr><td>매번 조건을 다시 설명</td><td>공통 기준을 지침으로 저장</td></tr>
+    <tr><td>여러 작업이 섞일 수 있음</td><td>주제별 작업을 한곳에 관리</td></tr>
+    <tr><td>이전 자료를 다시 찾아야 함</td><td>참고 자료를 모아 활용</td></tr>
+    <tr><td>일회성 작업에 적합</td><td>반복 업무에 적합</td></tr>
+  </table>
+  <div class="quote" style="margin-top:24px; font-size:1.25rem">
+    프롬프트는 <u>한 번의 작업</u>을 위한 요청,<br>Gem 지침은 <u>반복될 작업의 공통 원칙</u>입니다.
+  </div>
+  <div class="section-label">개념 · Gem 이해</div>
+</section>
+
+<!-- 10. Gem으로 만들면 좋은 작업 -->
+<section class="slide">
+  <span class="tag">개념 · Gem</span>
+  <h2>Gem으로 만들면 좋은 작업</h2>
+  <div class="badge-row">
+    <span class="badge">📰 매일 아침 분야 브리핑</span>
+    <span class="badge">📋 반복되는 회의록 정리</span>
+    <span class="badge">📊 월별 결과보고서</span>
+    <span class="badge">🖼️ 홍보 포스터</span>
+    <span class="badge">🃏 카드뉴스 6페이지</span>
+    <span class="badge">📚 수업자료·활동지</span>
+  </div>
+  <h3 style="margin-top:40px">직업별로 이런 브리핑 Gem을 만들 수 있습니다</h3>
+  <table>
+    <tr><th style="width:160px">직업</th><th>브리핑 주제 예시</th></tr>
+    <tr><td class="hl">중소기업 대표</td><td>우리 업계 소식 · 정책 지원 사업 → 경영 판단 재료로</td></tr>
+    <tr><td class="hl">취업준비생</td><td>지원 업계 산업·채용 뉴스 → 면접 답변·자소서 소재로</td></tr>
+    <tr><td class="hl">부동산업자</td><td>부동산 정책·시장 동향 → 고객 응대 멘트로</td></tr>
+    <tr><td class="hl">직장인</td><td>업계 동향·트렌드 → 팀 보고·기획 아이디어로</td></tr>
+    <tr><td class="hl">AI 강사</td><td>AI 최신 도구·교육 사례 → 수업 자료로</td></tr>
+  </table>
+  <div class="section-label">개념 · Gem 이해</div>
+</section>
+
+<!-- 11. 오늘의 핵심 흐름 -->
+<section class="slide">
+  <span class="tag">오늘의 핵심 흐름</span>
+  <h2>주제는 달라도, 과정은 모두 같습니다</h2>
+  <div class="flow" style="margin-top:10px">
+    <span class="step">① 실습 기사 준비</span><span class="arrow">→</span>
+    <span class="step">② 지침 생성기 질문에 답하기</span><span class="arrow">→</span>
+    <span class="step">③ 지침 완성</span><span class="arrow">→</span>
+    <span class="step">④ 내 Gem 만들기</span>
+  </div>
+  <div class="flow" style="margin-top:18px">
+    <span class="step">⑤ 브리핑 받기</span><span class="arrow">→</span>
+    <span class="step">⑥ 검증 + 2차 지침 추가</span><span class="arrow">→</span>
+    <span class="step">⑦ 3차 이미지 기능 추가</span>
+  </div>
+  <div class="note" style="margin-top:34px">
+    공통 실습 주제 : <b>"내 분야의 소식을, 내 목적에 꼭 맞는 브리핑으로 받아보기"</b><br>
+    분야는 달라도 같은 순서로 함께 실습합니다. Gem은 만들고 끝이 아니라, <b>지침을 추가하며 3단계로 키워 갑니다</b>.
+  </div>
+  <div class="section-label">핵심 흐름</div>
+</section>
+
+<!-- 12. 강사 시연 -->
+<section class="slide divider">
+  <span class="tag">강사 시연 · 10~20분</span>
+  <h1>강사 전체 시연</h1>
+  <p class="sub" style="margin-top:30px">
+    지침 생성기 질문 → 지침 완성 → Gem 저장 → 첫 브리핑까지<br>
+    전 과정을 먼저 보여드립니다. 지금은 눈으로만 따라오세요.
+  </p>
+</section>
+
+<!-- 13. 실습1: 참고 글 -->
+<section class="slide">
+  <span class="tag">실습 ① · 20~38분</span>
+  <h2>1단계 — 실습에 쓸 기사 준비하기</h2>
+  <div class="cols">
+    <div class="card">
+      <h3>📄 기사를 준비해 왔다면</h3>
+      <ul class="clean" style="font-size:1rem">
+        <li>내 분야 기사 <b>링크</b>를 복사해 두세요.</li>
+        <li>링크가 안 읽히면 <b>기사 제목과 본문</b>을 복사해 붙여 넣으면 됩니다.</li>
+        <li>오늘 실습에는 <b>최근 일주일 안</b> 기사가 좋습니다.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🔍 기사가 없다면 — 검색으로!</h3>
+      <p style="font-size:1.05rem">제미나이는 구글 검색을 활용할 수 있습니다. 기사가 없어도 이렇게 요청하면 됩니다.</p>
+      <pre style="font-size:0.95rem; margin-top:10px">오늘 부동산 시장의 주요 소식
+3가지를 출처와 함께 알려줘.</pre>
+      <p style="font-size:0.95rem; margin-top:10px">"부동산 시장" 자리에 내 분야를 넣으세요.</p>
+    </div>
+  </div>
+  <div class="note"><b>주의</b> — 검색 결과에도 오래된 기사나 부정확한 내용이 섞일 수 있습니다. 브리핑 후 <b>출처 확인</b> 단계에서 함께 검증합니다.</div>
+  <div class="section-label">실습 ① 재료 준비</div>
+</section>
+
+<!-- 14. 지침 생성기 Gem 소개 -->
+<section class="slide">
+  <span class="tag">실습 ① · 지침 생성기 Gem</span>
+  <h2>2단계 — 지침 생성기 질문에 답하면 지침이 완성됩니다</h2>
+  <p style="margin-bottom:20px">이 슬라이드 자료에 들어 있는 <b>✨ 나만의 브리핑 Gem 지침 생성기</b>에서 질문 5개에 답하면, 복사해서 바로 쓸 수 있는 지침이 만들어집니다.</p>
+  <table>
+    <tr><th style="width:130px">단계</th><th>지침 생성기가 묻는 것</th></tr>
+    <tr><td class="hl">1단계</td><td>직업·분야 — 나는 어떤 일을 하는 사람인가</td></tr>
+    <tr><td class="hl">2단계</td><td>챙겨보는 정보 주제 — 어떤 소식을 놓치면 안 되는가</td></tr>
+    <tr><td class="hl">3단계</td><td>정보를 쓰는 목적 — 수업 준비 · 경영 판단 · 고객 응대 · 면접 준비 · 업무 보고 · 개인 공부</td></tr>
+    <tr><td class="hl">4단계</td><td>선별 기준 — 우선해서 볼 정보 / 걸러낼 정보</td></tr>
+    <tr><td class="hl">5단계</td><td>브리핑 확인 상황 — 아침 스마트폰 · 회의 직전 · 고객/팀 공유</td></tr>
+    <tr><td class="hl">생성</td><td>답변을 모아 <b>복사해 붙여 넣을 수 있는 완성 지침</b> 생성</td></tr>
+  </table>
+  <div class="note">작성 원칙과 브리핑 템플릿은 <b>고정</b>되어 자동으로 포함됩니다 — 여러분은 분야·목적·기준만 정하면 됩니다.</div>
+  <div class="section-label">실습 ① 지침 생성기 질문</div>
+</section>
+
+<!-- 15. 고정 원칙 -->
+<section class="slide">
+  <span class="tag">실습 ① · 고정 원칙</span>
+  <h2>모든 지침에 자동으로 들어가는 원칙</h2>
+  <div class="cols">
+    <div class="card">
+      <h3>고정 작성 원칙</h3>
+      <ul class="clean" style="font-size:1rem">
+        <li>모든 내용에 출처(매체명·날짜) 표시</li>
+        <li>확인 안 된 내용은 '확인 필요' 표시</li>
+        <li>기사에 없는 수치·사실·인용을 만들지 않음</li>
+        <li>광고성·낚시성 정보는 걸러내기</li>
+        <li>전문용어는 쉬운 말로 풀어서 설명</li>
+        <li>요약에서 끝내지 않고 '다음 행동'까지 제시</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>고정 브리핑 템플릿</h3>
+      <ul class="clean" style="font-size:1rem">
+        <li>① 한 줄 요약</li>
+        <li>② 핵심 내용 3가지</li>
+        <li>③ 나에게 미치는 영향 — 기회 1 · 리스크 1</li>
+        <li>④ 내일 할 행동 1가지</li>
+        <li>⑤ 출처와 확인 필요 사항</li>
+      </ul>
+      <p style="font-size:0.95rem; margin-top:10px">④번이 있어서 "뻔한 요약"에서 멈추지 못합니다.</p>
+    </div>
+  </div>
+  <div class="section-label">실습 ① 지침 생성기 질문</div>
+</section>
+
+<!-- 15b. 나만의 브리핑 Gem 지침 생성기 -->
+<section class="slide scroll">
+  <span class="tag">실습 ① · 지침 생성기</span>
+  <h2>✨ 나만의 브리핑 Gem 지침 생성기</h2>
+  <div class="gen">
+    <div class="gen-title">질문 5개에 답하면, 나만의 브리핑 Gem 지침이 완성됩니다</div>
+    <div class="gen-sub">작성 원칙·브리핑 템플릿·사용 명령어는 <b>자동으로 포함</b>됩니다. 빈칸은 건너뛰어도 괜찮아요.</div>
+
+    <div class="gen-sec">1️⃣ 직업·분야 <span class="em">나는 어떤 일을 하는 사람인가요?</span></div>
+    <div class="field">
+      <input id="b-job" placeholder="예: AI 교육 강사 / 제조업 중소기업 대표 / 공인중개사 / 마케팅 직장인 / IT 취업 준비생">
+    </div>
+
+    <div class="gen-sec">2️⃣ 챙겨보는 정보 주제 <span class="em">어떤 소식을 놓치면 안 되나요?</span></div>
+    <div class="field">
+      <input id="b-topic" placeholder="예: AI 최신 도구와 교육 사례 / 우리 업계 동향과 정책 지원 / 부동산 정책·시장 동향 / 지원 업계 산업·채용 뉴스">
+    </div>
+
+    <div class="gen-sec">3️⃣ 정보를 쓰는 목적 <span class="em">브리핑을 받아서 무엇에 쓰나요?</span></div>
+    <div class="field">
+      <select id="b-goal">
+        <option value="수업·강의 준비">① 수업·강의 준비에 활용</option>
+        <option value="경영·사업 판단">② 경영·사업 판단에 활용</option>
+        <option value="고객 응대·상담">③ 고객 응대·상담에 활용</option>
+        <option value="면접·자기소개서 준비">④ 면접·자기소개서 준비에 활용</option>
+        <option value="업무 보고·기획">⑤ 업무 보고·기획에 활용</option>
+        <option value="개인 공부·트렌드 파악">⑥ 개인 공부·트렌드 파악</option>
+      </select>
+    </div>
+
+    <div class="gen-sec">4️⃣ 정보 선별 기준 <span class="em">무엇을 우선하고, 무엇을 거를까요? — 우선 정보 외의 중요한 소식도 함께 나옵니다</span></div>
+    <div class="gen-row">
+      <div class="field"><label>우선해서 보고 싶은 정보</label><input id="b-want" placeholder="예: 당장 현장에 적용할 수 있는 도구·정책·사례"></div>
+      <div class="field"><label>걸러내고 싶은 정보</label><input id="b-skip" placeholder="예: 개발자용 기술 뉴스, 연예성 가십, 광고성 기사"></div>
+    </div>
+
+    <div class="gen-sec">5️⃣ 브리핑 확인 상황 <span class="em">주로 언제, 어디서 읽나요?</span></div>
+    <div class="field">
+      <select id="b-when">
+        <option value="아침에 스마트폰으로 훑어본다">① 아침에 스마트폰으로 훑어보기</option>
+        <option value="수업이나 회의 직전에 빠르게 확인한다">② 수업·회의 직전에 빠르게 확인</option>
+        <option value="고객이나 팀에 바로 공유한다">③ 고객·팀에 바로 공유</option>
+      </select>
+    </div>
+
+    <button class="gen-btn" onclick="genGem()">✨ 나만의 Gem 지침 생성하기</button>
+    <div class="gen-out-wrap" id="b-wrap">
+      <textarea class="gen-out" id="b-out" readonly></textarea>
+      <div style="margin-top:10px">
+        <button class="copy" onclick="copyEl('b-out',this)">📋 완성 지침 복사</button>
+        <span style="font-size:0.95rem; color:#96772a; margin-left:10px">복사 후 → 제미나이 <b>Gems → 새 Gem</b> 지침란에 붙여넣기 → 저장!</span>
+      </div>
+    </div>
+  </div>
+  <div class="section-label">실습 ① 지침 생성기</div>
+</section>
+
+<!-- 16. 실습2: Gem 만들기 -->
+<section class="slide">
+  <span class="tag">실습 ② · 38~48분</span>
+  <h2>내 브리핑 Gem 만들기 — 저장까지!</h2>
+  <p style="margin-bottom:18px">
+    <a class="golink" href="https://gemini.google.com/gems/create" target="_blank" rel="noopener">🚀 제미나이 Gem 만들기 바로가기</a>&nbsp;&nbsp;
+    <a class="golink alt" href="https://gemini.google.com" target="_blank" rel="noopener">✨ 제미나이 홈</a>
+  </p>
+  <ol class="num" style="font-size:1.15rem">
+    <li>지침 생성기가 만들어 준 <b>완성 지침을 복사</b>합니다.</li>
+    <li>제미나이에서 <b>Gems → 새 Gem</b>을 선택합니다.</li>
+    <li>Gem의 <b>이름</b>을 정하고 지침란에 <b>붙여넣기</b> 합니다.</li>
+    <li><b>미리보기</b>로 짧은 요청을 테스트해 봅니다.</li>
+    <li>반드시 <b style="color:var(--bad)">저장</b> 버튼을 누릅니다!</li>
+  </ol>
+  <div class="note"><b>주의</b> — 지침 생성기는 지침 문서를 만들어 줄 뿐, Gem을 자동으로 만들어 주지 않습니다. 붙여넣기와 저장은 직접 해야 합니다.</div>
+  <div class="section-label">실습 ② Gem 만들기</div>
+</section>
+
+<!-- 17. 실습3: 글쓰기 -->
+<section class="slide">
+  <span class="tag">실습 ③ · 48~60분</span>
+  <h2>내 Gem으로 첫 브리핑 받아보기</h2>
+  <div class="two-pre">
+    <div>
+      <p style="margin-bottom:10px"><span class="cmd">브리핑</span>준비한 기사가 있을 때</p>
+      <pre>브리핑
+
+(기사 링크 또는 본문 붙여넣기)</pre>
+    </div>
+    <div>
+      <p style="margin-bottom:10px"><span class="cmd">브리핑</span>기사가 없을 때 — 검색 활용</p>
+      <pre>브리핑</pre>
+      <p style="font-size:1rem; margin-top:10px">한 단어만 입력하면 Gem이 내 관심 주제의
+최근 소식을 검색해 브리핑 형식으로 정리합니다.</p>
+    </div>
+  </div>
+  <div class="note">
+    링크가 안 읽히면 기사 <b>제목과 본문을 직접 붙여넣기</b> 하세요.<br>
+    한 줄 요약 → 핵심 3가지 → 기회·리스크 → <b>내일 할 행동 1가지</b> → 출처, 이 템플릿대로 나오는지 확인합니다.
+  </div>
+  <div class="section-label">실습 ③ 브리핑 받기</div>
+</section>
+
+<!-- 18. 평가표 -->
+<section class="slide">
+  <span class="tag">브리핑 검증 · 60~68분</span>
+  <h2>AI 브리핑, 그대로 믿어도 될까? — 검증 체크</h2>
+  <table>
+    <tr><th>확인 항목</th><th>확인 방법</th></tr>
+    <tr><td>출처의 매체명·날짜가 <b>실제로 존재</b>하는가?</td><td>링크 클릭 또는 매체명+제목으로 검색</td></tr>
+    <tr><td>수치·인용이 <b>원문과 일치</b>하는가?</td><td>원문 기사에서 해당 숫자 찾아 대조</td></tr>
+    <tr><td><b>최신 정보</b>인가?</td><td>기사 날짜 확인 — 오래된 기사가 섞이기도 함</td></tr>
+    <tr><td>기회·리스크 판단이 <b>기사 내용에 근거</b>하는가?</td><td>근거 문장이 기사에 있는지 확인</td></tr>
+    <tr><td>'확인 필요' 표시가 있는가?</td><td>하나도 없다면 오히려 의심해 보기</td></tr>
+  </table>
+  <div class="note"><b>핵심</b> — AI 검색도 오래된 기사나 틀린 출처를 섞을 수 있습니다. <b>브리핑은 판단의 재료이지, 판단 그 자체가 아닙니다.</b></div>
+  <div class="section-label">브리핑 검증</div>
+</section>
+
+<!-- 19. 검수/수정 명령 -->
+<section class="slide scroll">
+  <span class="tag">지침 추가 ① · 60~68분</span>
+  <h2>2차 — 지침을 추가하면 Gem이 자랍니다</h2>
+  <p style="margin-bottom:12px">브리핑이 잘 나오는 것을 확인했으니, <b>같은 Gem에 명령어 2개를 추가</b>합니다.<br>
+  제미나이에서 <b>내 Gem 편집(연필 아이콘) → 지침 맨 아래에 붙여넣기 → 저장</b>하면 끝.</p>
+  <div class="prompt-box">
+<pre id="pr-add2">[사용 명령어 추가]
+
+- '심층' → 방금 브리핑한 내용 중 사용자가 지정한 소식
+  (지정이 없으면 가장 중요한 소식)을 골라
+  배경, 전망, 반대 관점까지 깊게 분석한다.
+  출처를 함께 표시한다.
+
+- '공유멘트' → 방금 브리핑한 내용을 단톡방, 고객, 팀 등
+  내가 전할 상대에게 바로 보낼 수 있는
+  짧고 신뢰감 있는 멘트로 바꾼다.
+  확인되지 않은 내용은 넣지 않는다.</pre>
+    <div class="p-foot"><button class="copy" onclick="copyEl('pr-add2',this)">📋 추가 지침 복사</button></div>
+  </div>
+  <div class="note">저장 후 <b>'심층'</b>, <b>'공유멘트'</b>가 잘 작동하는지 테스트해 보세요.<br>
+  💡 <b>오늘의 핵심 배움</b> — Gem은 한 번 만들면 끝이 아니라, <b>쓰면서 지침을 추가·수정하며 키우는 작업 공간</b>입니다.</div>
+  <div class="section-label">지침 추가 ① 명령어</div>
+</section>
+
+<!-- 20. 시각 콘텐츠 시연 -->
+<section class="slide divider">
+  <span class="tag">강사 시연 · 68~76분</span>
+  <h1>완성된 브리핑을<br>시각 콘텐츠로 바꾸기</h1>
+  <p class="sub" style="margin-top:30px">
+    새 Gem을 만드는 게 아니라, <b style="color:#facc15">내 Gem에 지침만 추가</b>합니다.<br>
+    포스터는 <b style="color:#facc15">공지·홍보용 대표 이미지</b>,<br>
+    카드뉴스는 <b style="color:#facc15">단톡방·SNS 공유용 6페이지 이미지</b>입니다.
+  </p>
+</section>
+
+<!-- 21. 실습4: 포스터/카드뉴스 Gem -->
+<section class="slide">
+  <span class="tag">지침 추가 ② · 76~84분</span>
+  <h2>3차 — 이미지 제작 기능 붙이기</h2>
+  <p style="margin-bottom:16px"><b>같은 Gem</b>에 다음 슬라이드의 추가 지침을 <b>복사 → 지침 맨 아래에 붙여넣기 → 저장</b>하면, 브리핑에서 이미지까지 한 번에 됩니다. 명령어 4개가 추가됩니다.</p>
+  <table>
+    <tr><th style="width:220px">명령어</th><th>하는 일</th></tr>
+    <tr><td class="hl">포스터</td><td>공지·홍보·블로그 대문용 대표 이미지 1장 즉시 제작 (가로형 16:9, 제목은 짧고 크게)</td></tr>
+    <tr><td class="hl">카드뉴스</td><td>6페이지 전체 구성안 작성 (페이지별 제목·핵심 문구·이미지 아이디어 표)</td></tr>
+    <tr><td class="hl">카드뉴스 제작 시작</td><td>1페이지 이미지만 생성 (세로형 4:5)</td></tr>
+    <tr><td class="hl">계속</td><td>같은 디자인으로 다음 페이지 한 장씩 생성 → 6페이지까지</td></tr>
+  </table>
+  <div class="note"><b>왜 한 장씩?</b> — 6장을 한 번에 요청하면 한 이미지에 합쳐지거나, 일부만 나오거나, 디자인이 달라질 수 있습니다. <b>내용은 한 번에 기획, 이미지는 한 페이지씩</b>이 가장 안정적입니다.</div>
+  <div class="section-label">실습 ④ 시각 콘텐츠</div>
+</section>
+
+<!-- 21b. 포스터·카드뉴스 Gem 지침 전문 -->
+<section class="slide scroll">
+  <span class="tag">지침 추가 ② · 지침 전문</span>
+  <h2>이미지 제작 추가 지침 — 복사해서 내 Gem 지침 아래에 붙여넣기</h2>
+  <div class="prompt-box">
+<pre id="pr-visual">[이미지 제작 기능 추가]
+
+아래 명령어가 입력되면 방금 브리핑·심층 분석한 내용
+(또는 사용자가 붙여넣은 글)을 시각 콘텐츠로 만든다.
+
+이미지를 만들기 전에 먼저 다음을 파악한다.
+- 글의 주제
+- 주요 독자
+- 핵심 메시지
+- 이미지에 반드시 필요한 문구
+
+자료에 없는 날짜, 수치, 서비스, 인물, 혜택은 만들지 않는다.
+
+[명령어 1: 포스터]
+사용자가 '포스터'라고 입력하면
+공지·홍보·블로그 대문에 쓸 대표 이미지를 즉시 제작한다.
+- 비율: 가로형 16:9
+- 용도: 대표 이미지(단톡방 공지·SNS·블로그 대문)
+- 제목은 짧고 크게 표시
+- 한글 문구는 제목과 짧은 보조 문구만 사용
+- 본문 전체를 이미지에 넣지 않는다.
+- 스마트폰에서도 제목이 잘 보이게 한다.
+- 글의 분위기와 주요 독자에게 맞는 색상을 사용한다.
+- 이미지 생성 후 들어간 한글 문구의 오류를 점검한다.
+- 설명이나 이미지 프롬프트만 제시하지 말고 실제 이미지를 생성한다.
+
+[명령어 2: 카드뉴스]
+사용자가 '카드뉴스'라고 입력하면
+입력한 글을 총 6페이지 카드뉴스로 기획한다.
+- 페이지 비율: 세로형 4:5
+- 한 페이지에는 하나의 핵심 메시지만 사용
+- 모든 페이지의 색상, 글꼴, 여백, 삽화 스타일을 통일
+- 긴 문장은 짧은 카드뉴스 문장으로 바꾼다.
+- 원문에 없는 사실과 수치를 추가하지 않는다.
+
+페이지 구성:
+1페이지: 독자의 관심을 끄는 표지
+2페이지: 독자가 겪고 있는 문제
+3페이지: 핵심 개념 또는 원인
+4페이지: 실제 사례나 좋은 예와 나쁜 예
+5페이지: 따라 할 수 있는 방법 또는 체크리스트
+6페이지: 핵심 요약과 행동 제안
+
+먼저 다음 표를 제시한다.
+- 페이지 번호 / 페이지 제목 / 핵심 문구 / 보조 문구 / 추천 이미지 / 강조할 단어
+
+구성안이 완성되면
+'카드뉴스 제작 시작이라고 입력하면 1페이지부터 제작합니다.'
+라고 안내한다.
+
+[명령어 3: 카드뉴스 제작 시작]
+1페이지 이미지만 생성한다.
+한 화면에 여러 페이지를 합치지 않는다.
+이미지 생성 후 페이지 번호와 한글 오류를 확인한다.
+
+[명령어 4: 계속]
+앞에서 확정한 디자인을 유지하여
+다음 페이지 한 장만 생성한다.
+6페이지까지 순서대로 진행한다.
+
+[이미지 제작 원칙]
+- 각 페이지는 독립된 이미지 한 장으로 제작한다.
+- 6페이지를 한 이미지에 배치하지 않는다.
+- 한글 문구를 최소화하여 글자 오류를 줄인다.
+- 이미지마다 인물과 디자인 분위기가 갑자기 바뀌지 않게 한다.
+- 생성 결과에 글자 오류가 있으면 해당 페이지만 수정한다.
+- 특정 업체의 로고나 저작권 이미지를 임의로 넣지 않는다.
+- 사용자가 제공한 인물 사진은 동의된 용도로만 사용한다.</pre>
+    <div class="p-foot"><button class="copy" onclick="copyEl('pr-visual',this)">📋 지침 전문 복사</button></div>
+  </div>
+  <div class="note">복사 → <b>내 Gem 편집(연필 아이콘)</b> → 지침 <b>맨 아래</b>에 붙여넣기 → <b>저장</b>. 새 Gem을 만들 필요가 없습니다!</div>
+  <div class="section-label">지침 추가 ② 이미지</div>
+</section>
+
+<!-- 22. 카드뉴스 구성 -->
+<section class="slide">
+  <span class="tag">실습 ④ · 카드뉴스 구성</span>
+  <h2>카드뉴스 6페이지 기본 구성</h2>
+  <table>
+    <tr><th style="width:110px">페이지</th><th>역할</th><th>예시 제목</th></tr>
+    <tr><td class="hl">1페이지</td><td>관심을 끄는 표지</td><td>AI가 내 마음을 몰라주는 이유</td></tr>
+    <tr><td class="hl">2페이지</td><td>독자가 겪는 문제</td><td>"이 기사 요약해줘"라고만 하셨나요?</td></tr>
+    <tr><td class="hl">3페이지</td><td>핵심 개념·원인</td><td>AI는 질문에 담긴 정보만 활용해요</td></tr>
+    <tr><td class="hl">4페이지</td><td>나쁜 예 vs 좋은 예</td><td>나쁜 질문과 좋은 질문</td></tr>
+    <tr><td class="hl">5페이지</td><td>따라 할 수 있는 방법</td><td>좋은 프롬프트의 6가지 요소</td></tr>
+    <tr><td class="hl">6페이지</td><td>요약과 행동 제안</td><td>AI 활용은 질문을 구체화하는 힘</td></tr>
+  </table>
+  <div class="note">한 페이지에는 <b>하나의 핵심 메시지만</b> · 모든 페이지는 <b>같은 디자인 체계</b> 유지 · 원문에 없는 사실·수치 금지</div>
+  <div class="section-label">실습 ④ 시각 콘텐츠</div>
+</section>
+
+<!-- 23. 실습4 목표 -->
+<section class="slide">
+  <span class="tag">실습 ④ · 84~94분</span>
+  <h2>오늘 수업에서 함께 완성할 것</h2>
+  <div class="badge-row" style="margin-top:6px">
+    <span class="badge">🖼️ 포스터 1장</span>
+    <span class="badge">📋 카드뉴스 6페이지 구성안</span>
+    <span class="badge">🃏 카드뉴스 1페이지</span>
+  </div>
+  <div class="flow" style="margin-top:34px">
+    <span class="step">브리핑</span><span class="arrow">→</span>
+    <span class="step">포스터</span><span class="arrow">→</span>
+    <span class="step">카드뉴스</span><span class="arrow">→</span>
+    <span class="step">카드뉴스 제작 시작</span>
+  </div>
+  <div class="note" style="margin-top:30px">
+    이미지 생성 시간과 이용 한도 때문에 6장을 수업 중 다 만들기는 빠듯합니다.<br>
+    나머지 2~6페이지는 집에서 <b>"계속"</b> 명령으로 이어서 만드세요. 구성안이 있으니 디자인이 유지됩니다.
+  </div>
+  <div class="section-label">실습 ④ 시각 콘텐츠</div>
+</section>
+
+<!-- 24. 회의록 미니 시연 -->
+<section class="slide">
+  <span class="tag">미니 시연 · 94~98분</span>
+  <h2>같은 구조로 — 회의록·보고서 Gem</h2>
+  <div class="two-pre">
+    <div>
+      <p style="margin-bottom:10px; font-weight:700; color:var(--teal-dark)">입력 : 회의 메모</p>
+      <pre>7월 20일 AI 활용 교육 준비 회의를 진행했다.
+참석자는 김강사, 이담당자였다.
+교육 대상은 중장년 주민으로 정했다.
+교육 시간은 2시간이 좋겠다는 의견이 나왔다.
+장소는 주민센터를 검토하기로 했다.
+김강사는 실습 자료를 준비하고,
+이담당자는 장소와 컴퓨터 사용 가능
+여부를 확인하기로 했다.
+다음 회의 날짜는 아직 정하지 않았다.</pre>
+    </div>
+    <div>
+      <p style="margin-bottom:10px; font-weight:700; color:var(--teal-dark)">출력 : 정리된 회의록</p>
+      <pre>[결정 사항]
+- 교육 대상: 중장년 주민
+- 교육 시간: 2시간
+
+[후속 업무]
+- 김강사: 실습 자료 준비
+- 이담당자: 장소 및 컴퓨터 확인
+
+[확인 필요]
+- 최종 교육 장소
+- 다음 회의 일시
+- 각 업무의 완료 기한</pre>
+    </div>
+  </div>
+  <div class="note">핵심 — 발언을 그대로 옮기지 않고 안건별 정리 · 논의와 결정 구분 · <b>없는 결정은 만들지 않고 '확인 필요' 표시</b>. 보고서 Gem도 같은 원리입니다.</div>
+  <div class="section-label">미니 시연</div>
+</section>
+
+<!-- 25. 정리 -->
+<section class="slide">
+  <span class="tag">정리 · 98~100분</span>
+  <h2>오늘 배운 세 문장</h2>
+  <ol class="num" style="font-size:1.3rem">
+    <li>좋은 프롬프트에는 <b>대상·목적·자료·조건·형식</b>이 들어간다.</li>
+    <li>Gem에는 매번 반복되는 <b>공통 기준과 작업 방식</b>을 넣는다.</li>
+    <li>AI의 초안은 끝이 아니라 <b>검토하고 수정할 출발점</b>이다.</li>
+  </ol>
+  <h3 style="margin-top:34px">작업 전 스스로에게 묻는 5가지</h3>
+  <p style="font-size:1.05rem">
+    ① 이 결과물은 누구를 위한 것인가? &nbsp;② 좋은 결과의 기준은 무엇인가?<br>
+    ③ AI가 임의로 만들면 안 되는 정보는? &nbsp;④ 이번 작업에서 반복되는 부분은?<br>
+    ⑤ 반복되는 기준을 Gem 지침으로 만들 수 있는가?
+  </p>
+  <div class="section-label">정리</div>
+</section>
+
+<!-- 26. 마무리 -->
+<section class="slide cover">
+  <span class="tag">수고하셨습니다!</span>
+  <h1>오늘 여러분이 얻은 것</h1>
+  <p class="sub" style="margin-top:24px">
+    ✅ 브리핑부터 카드뉴스까지 <b style="color:#facc15">한 번에 되는 나만의 Gem</b><br>
+    ✅ 필요할 때마다 <b style="color:#facc15">지침을 추가해 Gem을 키우는 방법</b>
+  </p>
+  <div class="meta">
+    프롬프트는 AI에게 일을 요청하는 문장이고,<br>
+    Gem은 AI와 반복해서 일하는 방식을 설계하는 공간입니다.<br><br>
+    집에서 할 일 : 내일 아침 "브리핑" 한 단어로 내 분야 소식 받아보기<br>
+    "계속" 명령으로 카드뉴스 2~6페이지 완성하기
+  </div>
+</section>
+
+<div class="nav">
+  <button onclick="move(-1)">◀ 이전</button>
+  <span class="counter" id="counter">1 / 1</span>
+  <button onclick="move(1)">다음 ▶</button>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  let cur = 0;
+  function show(i){
+    cur = Math.max(0, Math.min(slides.length-1, i));
+    slides.forEach((s,idx)=>s.classList.toggle('active', idx===cur));
+    document.getElementById('counter').textContent = (cur+1)+' / '+slides.length;
+    document.getElementById('progress').style.width = ((cur)/(slides.length-1)*100)+'%';
+  }
+  function move(d){ show(cur+d); }
+  document.addEventListener('keydown', e=>{
+    const t = e.target;
+    if(t && (t.tagName==='INPUT' || t.tagName==='TEXTAREA' || t.tagName==='SELECT')) return;
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown') move(1);
+    if(e.key==='ArrowLeft'||e.key==='PageUp') move(-1);
+    if(e.key==='Home') show(0);
+    if(e.key==='End') show(slides.length-1);
+  });
+  document.addEventListener('click', e=>{
+    if(e.target.closest('.nav, .gen, .prompt-box, button, input, select, textarea, a, pre')) return;
+    move(1);
+  });
+  show(0);
+
+  /* ===== 복사 ===== */
+  function copyText(text, btn){
+    function flash(ok){
+      const orig = btn.textContent;
+      btn.textContent = ok ? '✅ 복사되었습니다!' : '⚠ 복사 실패 — 직접 드래그해 주세요';
+      btn.classList.add('copied');
+      setTimeout(()=>{ btn.textContent = orig; btn.classList.remove('copied'); }, 1800);
+    }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(()=>flash(true), ()=>flash(false));
+    }else{
+      try{
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        const ok = document.execCommand('copy'); document.body.removeChild(ta); flash(ok);
+      }catch(err){ flash(false); }
+    }
+  }
+  function copyEl(id, btn){
+    const el = document.getElementById(id);
+    const text = ('value' in el && el.tagName!=='PRE') ? el.value : el.innerText;
+    if(!text.trim()){
+      const orig = btn.textContent;
+      btn.textContent = '⚠ 먼저 지침을 생성하세요';
+      setTimeout(()=>{ btn.textContent = orig; }, 1600);
+      return;
+    }
+    copyText(text, btn);
+  }
+
+  /* ===== 브리핑 Gem 지침 생성기 ===== */
+  function v(id){ return document.getElementById(id).value.trim(); }
+  function genGem(){
+    const job = v('b-job') || '내 분야';
+    const topic = v('b-topic') || '내 분야의 주요 소식';
+    const goal = v('b-goal');
+    const want = v('b-want') || '실제 업무와 생활에 바로 적용할 수 있는 정보';
+    const skip = v('b-skip') || '광고성·낚시성 기사, 확인되지 않은 소문';
+    const when = v('b-when');
+
+    const angleMap = {
+      '수업·강의 준비': '- 분석 관점: 수업에서 다룰 핵심 개념, 학습자가 주의할 한계와 부작용,\n  바로 써먹을 10분 실습·토론 아이디어를 함께 제시한다.',
+      '경영·사업 판단': '- 분석 관점: 우리 회사의 비용과 업무에 미칠 리스크와 기회,\n  실무 팀장에게 지시할 확인 사항을 함께 제시한다.',
+      '고객 응대·상담': '- 분석 관점: 고객 심리에 미칠 영향, 기사에서 과장되었거나 이면이 있는 부분,\n  고객에게 건넬 한 줄 브리핑 멘트를 함께 제시한다.',
+      '면접·자기소개서 준비': '- 분석 관점: 면접에서 언급할 포인트, 산업 이해도를 보여줄 키워드,\n  자기소개서에 연결할 소재를 함께 제시한다.',
+      '업무 보고·기획': '- 분석 관점: 팀 보고에 쓸 핵심 문장, 우리 업무에 적용할 아이디어,\n  상사가 물어볼 예상 질문을 함께 제시한다.',
+      '개인 공부·트렌드 파악': '- 분석 관점: 꼭 기억할 개념, 더 찾아볼 키워드,\n  일상에서 판단할 때 주의할 점을 함께 제시한다.'
+    };
+
+    let p = '';
+    p += '너는 ' + job + '를 위한 ' + topic + ' 전문 브리핑 비서다.\n\n';
+
+    p += '[브리핑 목적]\n';
+    p += '사용자가 ' + goal + '에 바로 활용할 수 있도록 정보를 선별하고 정리한다.\n';
+    p += '요약에서 끝내지 않고, 사용자가 다음에 할 행동까지 제시한다.\n\n';
+
+    p += '[사용자 정보]\n';
+    p += '- 직업·분야: ' + job + '\n';
+    p += '- 관심 주제: ' + topic + '\n';
+    p += '- 활용 목적: ' + goal + '\n';
+    p += '- 브리핑 확인 상황: ' + when + '\n';
+    p += '  (스마트폰에서 3분 안에 읽을 수 있는 분량으로 작성한다.)\n\n';
+
+    p += '[가장 중요한 원칙 — 자료가 있으면 자료만 브리핑한다]\n';
+    p += '- 사용자가 기사 링크나 본문을 붙여넣으면,\n';
+    p += '  오직 그 자료 안에 있는 내용만 브리핑한다.\n';
+    p += '- 자료에 없는 내용은 관심 주제나 우선할 정보라도\n';
+    p += '  절대 추가하지 않고, 검색으로 끌어오지도 않는다.\n';
+    p += '- 붙여넣은 자료가 관심 주제(' + topic + ')와 관련이 없어도,\n';
+    p += '  주제를 억지로 연결하지 말고 자료 내용 그대로 브리핑한다.\n';
+    p += '- 아래 [검색 선별 기준]은 자료 없이 스스로 소식을 찾는\n';
+    p += "  ('브리핑'만 입력한) 경우에만 적용한다.\n\n";
+
+    p += "[검색 선별 기준] (자료 없이 '브리핑'만 입력했을 때만 적용)\n";
+    p += '- 우선할 정보: ' + want + '\n';
+    p += '- 걸러낼 정보: ' + skip + '\n';
+    p += '- 우선할 정보는 다루는 순서와 비중의 기준일 뿐이다.\n';
+    p += '  우선 정보에 해당하지 않아도 ' + topic + ' 분야에서\n';
+    p += '  중요한 소식이라면 브리핑에 포함한다.\n';
+    p += (angleMap[goal] || angleMap['개인 공부·트렌드 파악']) + '\n\n';
+
+    p += '[작성 원칙]\n';
+    p += '- 모든 내용에 출처(매체명·날짜)를 표시한다.\n';
+    p += "- 확인되지 않은 내용은 '확인 필요'로 표시한다.\n";
+    p += '- 기사에 없는 수치, 사실, 인용을 만들지 않는다.\n';
+    p += '- 광고성·과장된 표현을 걸러내고 사실 중심으로 정리한다.\n';
+    p += '- 사실과 의견(해석)을 구분해서 표시한다.\n';
+    p += '- 전문용어는 쉬운 말로 풀어서 설명한다.\n';
+    p += '- 짧은 문장으로, 중요한 것부터 쓴다.\n\n';
+
+    p += '[출력 형식 — 브리핑 기본 템플릿]\n';
+    p += '1. 한 줄 요약\n';
+    p += '2. 핵심 내용 3가지\n';
+    p += '3. 나에게 미치는 영향: 기회 1가지, 리스크 1가지\n';
+    p += '4. 내일 할 행동 1가지\n';
+    p += '5. 출처와 확인 필요 사항\n\n';
+
+    p += '[사용 명령어]\n';
+    p += "- '브리핑' + 기사 링크나 본문 → 해당 기사를 위 형식으로 정리\n";
+    p += "- '브리핑'만 입력 → 최근 " + topic + ' 주요 소식을 검색해\n';
+    p += '  가장 중요한 것 3가지를 골라 위 형식으로 정리\n';
+    p += '\n기사 링크에 접근할 수 없으면 사용자에게\n기사 제목과 본문을 붙여 넣어 달라고 요청한다.\n';
+
+    document.getElementById('b-out').value = p;
+    document.getElementById('b-wrap').classList.add('show');
+    document.getElementById('b-wrap').scrollIntoView({behavior:'smooth', block:'nearest'});
+  }
+</script>
+</body>
+</html>
